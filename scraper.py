@@ -18,9 +18,9 @@ supabase_client = None
 if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        print('Conexión a Supabase exitosa.')
+        print("Conexión a Supabase exitosa.")
     except Exception as e:
-        print(f'Error al conectar a Supabase: {e}')
+        print(f"Error al conectar a Supabase: {e}")
 else:
     print('Advertencia: Las credenciales de Supabase (SUPABASE_URL o SUPABASE_KEY) no están configuradas en las variables de entorno.')
 
@@ -34,7 +34,8 @@ def clean_and_convert_price(price_string):
         return None
     # Eliminar '$', separadores de miles (.),  , 
 , reemplazar coma (,) por punto (.) para decimales
-    cleaned_price_text = price_string.replace('$', '').replace('\xa0', '').replace('\n', '').replace('.', '').replace(',', '.').strip()
+    cleaned_price_text = price_string.replace('$', '').replace(' ', '').replace('
+', '').replace('.', '').replace(',', '.').strip()
     try:
         return float(cleaned_price_text)
     except ValueError:
@@ -542,9 +543,9 @@ Scrapeando: {categoria} - {product_name} - {supermercado} ({url})")
         try:
             records = df_result.to_dict(orient='records')
             response = supabase_client.table('precios_canasta').insert(records).execute()
-            print(f'{len(records)} registros insertados en Supabase. Respuesta: {response}')
+            print(f"{len(records)} registros insertados en Supabase. Respuesta: {response}")
         except Exception as e:
-            print(f'Error al insertar registros en Supabase: {e}')
+            print(f"Error al insertar registros en Supabase: {e}")
     else:
         print('No se pudo insertar en Supabase: Cliente no inicializado.')
 
