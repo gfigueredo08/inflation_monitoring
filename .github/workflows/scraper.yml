@@ -1,0 +1,32 @@
+name: Scraper Canasta
+
+on:
+  schedule:
+    - cron: '0 10 */2 * *'  # Corre cada 2 días a las 10am UTC (7am Argentina)
+  workflow_dispatch:          # Permite correrlo manualmente desde GitHub
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v3
+
+      - name: Instalar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependencias
+        run: |
+          pip install playwright supabase pandas
+
+      - name: Instalar Chromium para Playwright
+        run: playwright install chromium --with-deps
+
+      - name: Ejecutar scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python scraper.py
