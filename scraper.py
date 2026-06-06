@@ -34,8 +34,7 @@ def clean_and_convert_price(price_string):
         return None
     # Eliminar '$', separadores de miles (.),  , 
 , reemplazar coma (,) por punto (.) para decimales
-    cleaned_price_text = price_string.replace('$', '').replace(' ', '').replace('
-', '').replace('.', '').replace(',', '.').strip()
+    cleaned_price_text = price_string.replace('$', '').replace('\xa0', '').replace('\n', '').replace('.', '').replace(',', '.').strip()
     try:
         return float(cleaned_price_text)
     except ValueError:
