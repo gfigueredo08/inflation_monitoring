@@ -32,10 +32,8 @@ def clean_and_convert_price(price_string):
     """
     if price_string is None:
         return None
-    # Eliminar '$', separadores de miles (.),  , 
-, reemplazar coma (,) por punto (.) para decimales
-    cleaned_price_text = price_string.replace('$', '').replace(' ', '').replace('
-', '').replace('.', '').replace(',', '.').strip()
+    # Eliminar '$', separadores de miles (.), \xa0 y \n, reemplazar coma por punto
+    cleaned_price_text = price_string.replace('$', '').replace('\xa0', '').replace('\n', '').replace('.', '').replace(',', '.').strip()
     try:
         return float(cleaned_price_text)
     except ValueError:
@@ -514,8 +512,7 @@ async def scrape_canasta(canasta_dict):
                     print(f"Saltando URL inválida o placeholder para {categoria} - {product_name} - {supermercado}: {url}")
                     continue
 
-                print(f"
-Scrapeando: {categoria} - {product_name} - {supermercado} ({url})")
+                print(f"Scrapeando: {categoria} - {product_name} - {supermercado} ({url})")
                 price_data = await scrape_price(url, supermercado) # <--- Llamada a la función actualizada
                 if price_data is not None:
                     price, price_type = price_data
