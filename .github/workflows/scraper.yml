@@ -2,7 +2,7 @@ name: Scraper Canasta
 
 on:
   schedule:
-    - cron: '0 10 */2 * *'  # Corre cada 2 días a las 10am UTC (7am Argentina)
+    - cron: '0 10 */7 * *'  # Corre cada 2 días a las 10am UTC (7am Argentina)
   workflow_dispatch:          # Permite correrlo manualmente desde GitHub
 
 jobs:
