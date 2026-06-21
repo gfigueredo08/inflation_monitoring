@@ -244,296 +244,78 @@ async def scrape_price(url, supermercado):
             await browser.close()
             print(f"Navegador de {supermercado} cerrado.")
 
-# --- Basket Configuration ---
+# --- Carga de la canasta desde Supabase ---
 
-supermercados = ["carrefour", "jumbo", "disco", "vea", "dia"]
+def cargar_canasta_desde_supabase(supabase_client):
+    """
+    Lee la configuración activa de la canasta (categoria, producto, supermercado, url)
+    desde la tabla canasta_config en Supabase.
 
-canasta = {
-
-    "Pan y cereales": {
-        "Arroz Parboil Gallo 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/arroz-parboil-gallo-oro-en-bolsa-1-kg-718787/p",
-            "jumbo": "https://www.jumbo.com.ar/arroz-parboil-en-bolsa-1-kg-gallo-oro/p",
-            "disco": "https://www.disco.com.ar/arroz-parboil-en-bolsa-1-kg-gallo-oro/p",
-            "vea": "https://www.vea.com.ar/arroz-parboil-en-bolsa-1-kg-gallo-oro/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/arroz-parboil-gallo-1-kg-295459/p"
-        },
-        "Fideos Mostachol Matarazzo 500g": {
-            "carrefour": "https://www.carrefour.com.ar/fideos-mostacholes-n52-matarazzo-rayado-500-g-726304/p",
-            "jumbo":     "https://www.jumbo.com.ar/fideos-matarazzo-mostachol-n52-x500g-2/p",
-            "disco": "https://www.disco.com.ar/fideos-matarazzo-mostachol-n52-x500g-2/p",
-            "vea": "https://www.vea.com.ar/fideos-matarazzo-mostachol-n52-x500g-2/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/mostachol-n-52-matarazzo-500-gr-99941/p"
-        },
-        "Harina 000 Cañuelas 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/harina-de-trigo-000-ultra-refinada-canuelas-1-kg/p",
-            "jumbo":     "https://www.jumbo.com.ar/harina-canuelas-ultra-refinada-vitamina-d-1kg/p",
-            "disco": "https://www.disco.com.ar/harina-canuelas-ultra-refinada-vitamina-d-1kg/p",
-            "vea": "https://www.vea.com.ar/harina-canuelas-ultra-refinada-vitamina-d-1kg/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/harina-000-canuelas-ultra-refinada-1-kg-273445/p"
-        },
-        "Pan blanco Lactal 460gr": {
-            "carrefour": "https://www.carrefour.com.ar/pan-blanco-lactal-460-grs-717550/p",
-            "jumbo": "https://www.jumbo.com.ar/pan-blanco-460-grs-lactal/p",
-            "disco": "https://www.disco.com.ar/pan-blanco-460-grs-lactal/p",
-            "vea": "https://www.vea.com.ar/pan-blanco-460-grs-lactal/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/pan-blanco-lactal-460-gr-245473/p"
-        },
-        "Galletitas de agua Cerealitas 212g": {
-            "carrefour": "https://www.carrefour.com.ar/galletitas-crackers-cerealitas-clasicas-212-g-720563/p",
-            "jumbo": "https://www.jumbo.com.ar/galletitas-cracker-cereal-clasicas-cerealitas-212-gr-2/p",
-            "disco": "https://www.disco.com.ar/galletitas-cracker-cereal-clasicas-cerealitas-212-gr-2/p ",
-            "vea": "https://www.vea.com.ar/galletitas-cracker-cereal-clasicas-cerealitas-212-gr-2/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/galletitas-crackers-clasicas-cerealitas-212-gr-147689/p"
-        },
-        "Galletitas dulces Surtido Bagley 400gr": {
-            "carrefour": "https://www.carrefour.com.ar/galletitas-surtidas-bagley-en-bolsa-400-g-745439/p",
-            "jumbo": "https://www.jumbo.com.ar/galletitas-surtido-bagley-400-gr-2/p",
-            "disco": "https://www.disco.com.ar/galletitas-surtido-bagley-400-gr-2/p",
-            "vea": "https://www.vea.com.ar/galletitas-surtido-bagley-400-gr-2/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/galletitas-surtidas-bagley-400-gr-271962/p"
-        }
-    },
-
-    "Carnes": {
-        "Suprema de Pollo 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/suprema-congelada-x-kg-704563/p",
-            "jumbo": "https://www.jumbo.com.ar/suprema-de-pollo-granel-fresca/p",
-            "disco": "https://www.disco.com.ar/suprema-de-pollo-granel-fresca/p",
-            "vea": "https://www.vea.com.ar/suprema-de-pollo-granel-fresca/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/suprema-de-pollo-x-kg-162808/p"
-        },
-        "Salchicha Patyviena 6u": {
-            "carrefour": "https://www.carrefour.com.ar/salchichas-clasicas-patyviena-flow-pack-6-uni_729709/p",
-            "jumbo": "https://www.jumbo.com.ar/salchichas-patyviena-clasicas-x-6-230-gr/p",
-            "disco": "https://www.disco.com.ar/salchichas-patyviena-clasicas-x-6-230-gr/p",
-            "vea": "https://www.vea.com.ar/salchichas-patyviena-clasicas-x-6-230-gr/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/salchichas-clasicas-x6-ud-paty-viena-230-gr-300137/p"
-        },
-        "Asado 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/asado-novillo-x-kg-6631/p",
-            "jumbo": "https://www.jumbo.com.ar/asado-del-centro-3/p",
-            "disco": "https://www.disco.com.ar/asado-premium-2/p",
-            "vea": "https://www.vea.com.ar/asado-del-centro-la-hacienda/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/asado-x-kg-279637/p"
-        },
-        "Carne picada 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/picada-organica-x-kg-693276/p",
-            "jumbo": "https://www.jumbo.com.ar/carne-vacuna-picada-comun-la-hacienda-2/p",
-            "disco": "https://www.disco.com.ar/carne-vacuna-picada-magra-2/p",
-            "vea": "https://www.vea.com.ar/carne-vacuna-picada-comun-la-hacienda-2/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/carne-picada-de-nalga-x-500-gr-225674/p"
-        },
-        "Paleta 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/paleta-x-kg-662849/p",
-            "jumbo": "https://www.jumbo.com.ar/paleta-trozo-2/p",
-            "disco": "https://www.disco.com.ar/paleta-trozo-2/p",
-            "vea": "https://www.vea.com.ar/paleta-churr-de-nov-envasado-al-vacio/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/paleta-de-novillo-en-churrasco-x-kg-162840/p"
-        }
-    },
-
-    "Verduras y frutas": {
-        "Papa 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/papa-cepillada-x-kg/p",
-            "jumbo":     "https://www.jumbo.com.ar/papa-cepillada-granel-por-kg-2/p",
-            "disco": "https://www.disco.com.ar/papa-cepillada-granel-por-kg-2/p",
-            "vea": "https://www.vea.com.ar/papa-negra-por-kg-2/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/papa-negra-x-kg-90094/p"
-        },
-        "Tomate redondo 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/tomate-redondo-huella-natural-x-kg-718963/p",
-            "jumbo":     "https://www.jumbo.com.ar/tomate-redondo-grande-por-kg/p",
-            "disco": "https://www.disco.com.ar/tomate-redondo-grande-por-kg/p",
-            "vea": "https://www.vea.com.ar/tomate-redondo-por-kg/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/tomate-redondo-x-kg-90127/p"
-        },
-        "Cebolla 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/cebolla-x-kg/p",
-            "jumbo": "https://www.jumbo.com.ar/cebolla-superior-por-kg-2/p",
-            "disco": "https://www.disco.com.ar/cebolla-superior-por-kg-2/p",
-            "vea": "https://www.vea.com.ar/cebolla-superior-por-kg-2/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/cebolla-comercial-en-bolsa-malla-x-kg-90063/p"
-        },
-        "Zanahoria 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/zanahoria-x-kg-630573/p",
-            "jumbo": "https://www.jumbo.com.ar/zanahoria-por-kg-5/p",
-            "disco": "https://www.disco.com.ar/zanahoria-por-kg-5/p",
-            "vea": "https://www.vea.com.ar/zanahoria-por-kg-5/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/zanahoria-x-kg-90122/p"
-        },
-        "Manzana 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/manzana-red-x-kg-432782/p",
-            "jumbo": "https://www.jumbo.com.ar/manzana-roja-por-kg/p",
-            "disco": "https://www.disco.com.ar/manzana-roja-por-kg/p",
-            "vea": "https://www.vea.com.ar/manzana-roja-por-kg/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/manzana-roja-comercial-en-bolsa-malla-x-kg-90111/p"
-        },
-        "Banana 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/banana-seleccion-x-kg-719074/p",
-            "jumbo": "https://www.jumbo.com.ar/banana-ecuador-x-kg-2/p",
-            "disco": "",
-            "vea": "https://www.vea.com.ar/banana-x-kg/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/banana-x-kg-90110/p"
-        },
-        "Naranja de jugo 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/naranja-de-jugo-x-kg-8314/p",
-            "jumbo": "https://www.jumbo.com.ar/naranja-para-jugo-por-kg/p",
-            "disco": "",
-            "vea": "https://www.vea.com.ar/naranja-para-jugo-por-kg/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/naranja-jugo-x-kg-90117/p"
-        }
-    },
-
-    "Lácteos": {
-        "Leche entera La Serenísima botella 1l": {
-            "carrefour": "https://www.carrefour.com.ar/leche-la-serenisima-clasica-3-1l-720719/p",
-            "jumbo":     "https://www.jumbo.com.ar/leche-la-serenisima-entera-bot-1l/p",
-            "disco": "https://www.disco.com.ar/leche-la-serenisima-entera-bot-1l/p",
-            "vea": "https://www.vea.com.ar/leche-la-serenisima-entera-bot-1l/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/leche-entera-clasica-la-serenisima-botella-larga-vida-1-lt-165870/p"
-        },
-        "Yogur firme vainilla Yogurisimo 190g": {
-            "carrefour": "https://www.carrefour.com.ar/yogur-firme-vainilla-yogurisimo-190-g-721111/p",
-            "jumbo": "https://www.jumbo.com.ar/yogur-firme-vainilla-190-grs-yogurisimo/p",
-            "disco": "https://www.disco.com.ar/yogur-firme-vainilla-190-grs-yogurisimo/p",
-            "vea": "https://www.vea.com.ar/yogur-firme-vainilla-190-grs-yogurisimo/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/yogur-firme-vainilla-yogurisimo-190-gr-5553/p"
-        },
-        "Queso cremoso La Paulina 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/queso-cremoso-la-paulina-x-kg-647989/p",
-            "jumbo": "https://www.jumbo.com.ar/queso-cremoso-la-paulina-minimo-1-kg/p",
-            "disco": "https://www.disco.com.ar/queso-cremoso-la-paulina-minimo-1-kg/p",
-            "vea": "https://www.vea.com.ar/queso-cremoso-la-paulina-minimo-1-kg/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/queso-cremoso-la-paulina-x-kg-90181/p"
-        }
-    },
-
-    "Aceites y grasas": {
-        "Aceite de Girasol Natura 900ml": {
-            "carrefour": "https://www.carrefour.com.ar/aceite-de-girasol-natura-900-cc/p",
-            "jumbo":     "https://www.jumbo.com.ar/aceite-de-girasol-natura-900-ml/p",
-            "disco": "https://www.disco.com.ar/aceite-de-girasol-natura-900-ml/p",
-            "vea": "https://www.vea.com.ar/aceite-de-girasol-natura-900-ml/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/aceite-girasol-natural-09-lt-78855/p"
-        }
-    },
-
-    "Azúcar y dulces": {
-        "Azúcar Ledesma 1kg": {
-            "carrefour": "https://www.carrefour.com.ar/azucar-ledesma-molida-superior-bolsa-1-kg/p",
-            "jumbo": "https://www.jumbo.com.ar/azucar-ledesma-superior-x/p",
-            "disco": "https://www.disco.com.ar/azucar-ledesma-superior-x/p",
-            "vea": "https://www.vea.com.ar/azucar-ledesma-superior-x/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/azucar-ledesma-refinado-superior-1-kg-129208/p"
-        },
-        "Dulce de leche La Serenísima Clásico 400g": {
-            "carrefour": "https://www.carrefour.com.ar/dulce-de-leche-la-serenisima-colonial-400-g-678862/p",
-            "jumbo": "https://www.jumbo.com.ar/dulce-de-leche-la-serenisima-clasico-400g-2/p",
-            "disco": "https://www.disco.com.ar/dulce-de-leche-la-serenisima-clasico-400g-2/p",
-            "vea": "https://www.vea.com.ar/dulce-de-leche-la-serenisima-clasico-400g-2/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/dulce-de-leche-la-serenisima-clasico-400-gr-273372/p"
-        }
-    },
-
-    "Huevos": {
-        "Huevos blancos grandes 12u": {
-            "carrefour": "https://www.carrefour.com.ar/huevos-blanco-el-mercado-plastico-12-uni-291306/p",
-            "jumbo": "https://www.jumbo.com.ar/huevos-blancos-12-un-maxima/p",
-            "disco": "https://www.disco.com.ar/huevos-blancos-12-un-maxima-2/p",
-            "vea": "https://www.vea.com.ar/huevos-blancos-12-un-maxima-2/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/huevo-blanco-grande-12-ud-48133/p"
-        }
-    },
-
-    "Legumbres": {
-        "Lentejas secas 400g": {
-            "carrefour": "https://www.carrefour.com.ar/lentejas-carrefour-classic-400-g-738618/p",
-            "jumbo": "https://www.jumbo.com.ar/lentejas-secas-400-grs-cuisine-co/p",
-            "disco": "https://www.disco.com.ar/lentejas-secas-400-grs-cuisine-co/p",
-            "vea": "https://www.vea.com.ar/lentejas-secas-400-grs-cuisine-co/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/lentejas-dia-400-gr-292388/p"
-        }
-    },
-
-    "Bebidas": {
-        "Gaseosa Coca-Cola 1.75L": {
-            "carrefour": "https://www.carrefour.com.ar/gaseosa-cola-coca-cola-sabor-original-175-lts-630677/p",
-            "jumbo": "https://www.jumbo.com.ar/gaseosa-coca-cola-sabor-original-1-75-lt/p",
-            "disco": "https://www.disco.com.ar/gaseosa-coca-cola-sabor-original-1-75-lt/p",
-            "vea": "https://www.vea.com.ar/gaseosa-coca-cola-sabor-original-1-75-lt/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/gaseosa-coca-cola-sabor-original-175-lt-249072/p"
-        },
-        "Cerveza Quilmes rubia clásica 1L": {
-            "carrefour": "https://www.carrefour.com.ar/cerveza-rubia-clasica-quilmes-1-lt-505983/p",
-            "jumbo": "https://www.jumbo.com.ar/cerveza-quilmes-clasica-1lt-ret/p",
-            "disco": "https://www.disco.com.ar/cerveza-quilmes-clasica-1lt-ret/p",
-            "vea": "https://www.vea.com.ar/cerveza-quilmes-clasica-1lt-ret/p",
-            "dia": ""
-        },
-        "Vino tinto Cordero con piel de lobo 750ml": {
-            "carrefour": "https://www.carrefour.com.ar/vino-tinto-cordero-con-piel-de-lobo-malbec-750-cc-730738/p",
-            "jumbo": "https://www.jumbo.com.ar/vino-malbec-750-ml-cordero-con-piel-de-lobo/p",
-            "disco": "https://www.disco.com.ar/vino-malbec-750-ml-cordero-con-piel-de-lobo/p",
-            "vea": "https://www.vea.com.ar/vino-malbec-750-ml-cordero-con-piel-de-lobo/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/vino-tinto-malbec-cordero-con-piel-de-lobo-750-ml-311936/p"
-        }
-    },
-
-    "Yerba": {
-        "Yerba Amanda tradicional 500g": {
-            "carrefour": "https://www.carrefour.com.ar/yerba-mate-amanda-tradicional-500-grs-544972/p",
-            "jumbo": "https://www.jumbo.com.ar/yerba-amanda-tradicional-500-grs/p",
-            "disco": "https://www.disco.com.ar/yerba-amanda-tradicional-500-grs/p",
-            "vea": "https://www.vea.com.ar/yerba-amanda-tradicional-500-grs/p",
-            "dia": "https://diaonline.supermercadosdia.com.ar/yerba-mate-amanda-tradicional-500-gr-164681/p"
-        }
-    }
-}
+    Returns:
+        list[dict]: lista de registros activos.
+    """
+    response = supabase_client.table('canasta_config').select('*').eq('activo', True).execute()
+    registros = response.data
+    print(f"Canasta cargada desde Supabase: {len(registros)} URLs activas")
+    return registros
 
 # --- Scrape Basket Function ---
 
-async def scrape_canasta(canasta_dict):
+async def scrape_canasta(registros):
     """
-    Scrapea los precios de los productos en la canasta usando Playwright Async API
-    e inserta los resultados en Supabase.
+    Scrapea los precios de los productos de la canasta (recibida como lista de registros
+    desde Supabase) usando Playwright Async API, e inserta los resultados en Supabase.
 
     Args:
-        canasta_dict (dict): Diccionario anidado con la estructura canasta[categoria][producto][supermercado] = url.
+        registros (list[dict]): lista de filas con categoria, producto, supermercado, url.
 
     Returns:
-        pd.DataFrame: DataFrame con las columnas categoria, producto, supermercado, precio, tipo_precio, fecha_scraping, url.
+        pd.DataFrame: DataFrame con las columnas categoria, producto, supermercado, precio,
+        tipo_precio, fecha_scraping, url.
     """
     results = []
-    for categoria, productos_dict in canasta_dict.items():
-        for product_name, supermercados_dict in productos_dict.items():
-            for supermercado, url in supermercados_dict.items():
-                if not url or '...' in url:
-                    print(f"Saltando URL inválida o placeholder para {categoria} - {product_name} - {supermercado}: {url}")
-                    continue
+    for row in registros:
+        categoria = row['categoria']
+        product_name = row['producto']
+        supermercado = row['supermercado']
+        url = row['url']
 
-                print(f"Scrapeando: {categoria} - {product_name} - {supermercado} ({url})")
-                price_data = await scrape_price(url, supermercado) # <--- Llamada a la función actualizada
-                if price_data is not None:
-                    price, price_type = price_data
-                    scraping_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    results.append({
-                        'categoria': categoria,
-                        'producto': product_name,
-                        'supermercado': supermercado,
-                        'precio': price,
-                        'tipo_precio': price_type,
-                        'fecha_scraping': scraping_datetime,
-                        'url': url
-                    })
-                else:
-                    print(f"No se pudo obtener el precio para {categoria} - {product_name} - {supermercado}.")
+        if not url or '...' in url:
+            print(f"Saltando URL inválida o placeholder para {categoria} - {product_name} - {supermercado}: {url}")
+            continue
 
-                # Esperar 3 segundos entre cada request
-                await asyncio.sleep(3)
+        print(f"Scrapeando: {categoria} - {product_name} - {supermercado} ({url})")
+        price_data = await scrape_price(url, supermercado)
+
+        if price_data is not None:
+            price, price_type = price_data
+            scraping_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            results.append({
+                'categoria': categoria,
+                'producto': product_name,
+                'supermercado': supermercado,
+                'precio': price,
+                'tipo_precio': price_type,
+                'fecha_scraping': scraping_datetime,
+                'url': url
+            })
+        else:
+            print(f"No se pudo obtener el precio para {categoria} - {product_name} - {supermercado}.")
+            # Registrar el error en canasta_config para que Streamlit lo muestre
+            if supabase_client:
+                try:
+                    supabase_client.table('canasta_config').update({
+                        'ultimo_error': 'No se pudo obtener el precio',
+                        'fecha_ultimo_error': datetime.now().isoformat()
+                    }).eq('producto', product_name).eq('supermercado', supermercado).execute()
+                except Exception as e:
+                    print(f"No se pudo registrar el error en canasta_config: {e}")
+
+        # Esperar 3 segundos entre cada request
+        await asyncio.sleep(3)
 
     df_result = pd.DataFrame(results)
-    print(df_result.to_string()) # Reemplazado display(df_result) con print(df_result.to_string())
+    print(df_result.to_string())
 
     # --- Supabase Insertion ---
     if supabase_client:
@@ -552,4 +334,8 @@ async def scrape_canasta(canasta_dict):
 
 if __name__ == '__main__':
     print("Iniciando scraping de la canasta...")
-    asyncio.run(scrape_canasta(canasta))
+    if supabase_client:
+        registros = cargar_canasta_desde_supabase(supabase_client)
+        asyncio.run(scrape_canasta(registros))
+    else:
+        print("No se pudo cargar la canasta: cliente de Supabase no inicializado.")
