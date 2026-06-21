@@ -186,6 +186,7 @@ def predecir(modelo, df_prophet, periodos=3):
 def precios_actuales_por_supermercado(df: pd.DataFrame) -> pd.DataFrame:
     """
     Tabla pivote: precio más reciente de cada producto en cada supermercado.
+    Las columnas de supermercado se muestran con la primera letra en mayúscula.
     """
     df = df.copy()
     idx_ultimo = df.groupby(["producto", "supermercado"])["fecha_scraping"].idxmax()
@@ -194,6 +195,9 @@ def precios_actuales_por_supermercado(df: pd.DataFrame) -> pd.DataFrame:
     pivot = df_ultimo.pivot_table(
         index=["categoria", "producto"], columns="supermercado", values="precio"
     ).reset_index()
+    pivot.columns = [
+        c.capitalize() if c not in ("categoria", "producto") else c for c in pivot.columns
+    ]
     return pivot
 
 

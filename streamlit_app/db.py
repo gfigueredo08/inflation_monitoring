@@ -22,11 +22,28 @@ def get_supabase_client():
 @st.cache_data(ttl=300)  # refresca cada 5 minutos
 def cargar_precios():
     """
-    Lee la tabla precios_canasta completa.
+    Lee la tabla precios_canasta completa, paginando para superar el límite
+    de 1000 filas por request que aplica el cliente REST de Supabase.
     """
     client = get_supabase_client()
-    response = client.table("precios_canasta").select("*").execute()
-    df = pd.DataFrame(response.data)
+
+    all_rows = []
+    page_size = 1000
+    offset = 0
+    while True:
+        response = (
+            client.table("precios_canasta")
+            .select("*")
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = response.data
+        all_rows.extend(rows)
+        if len(rows) < page_size:
+            break
+        offset += page_size
+
+    df = pd.DataFrame(all_rows)
     if df.empty:
         return df
     df["fecha_scraping"] = pd.to_datetime(df["fecha_scraping"])

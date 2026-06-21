@@ -264,6 +264,7 @@ with tab3:
     else:
         # --- Semáforo de estado ---
         df_estado = df_config.copy()
+        df_estado["supermercado"] = df_estado["supermercado"].str.capitalize()
         df_estado["estado"] = df_estado.apply(
             lambda r: "🔴 Con error" if pd.notna(r.get("ultimo_error")) and r.get("ultimo_error")
             else ("⚪ Inactivo" if not r["activo"] else "🟢 OK"),
@@ -296,14 +297,14 @@ with tab3:
     # --- Editar una URL existente ---
     st.subheader("✏️ Editar una URL")
     if not df_config.empty:
-        opciones = (df_config["producto"] + " — " + df_config["supermercado"]).tolist()
-        seleccion = st.selectbox("Producto / Supermercado a editar", opciones)
+        opciones_df = df_config.copy()
+        opciones_df["label"] = opciones_df["producto"] + " — " + opciones_df["supermercado"].str.capitalize()
+        seleccion = st.selectbox("Producto / Supermercado a editar", opciones_df["label"].tolist())
 
         if seleccion:
-            producto_sel, super_sel = seleccion.split(" — ")
-            fila_actual = df_config[
-                (df_config["producto"] == producto_sel) & (df_config["supermercado"] == super_sel)
-            ].iloc[0]
+            fila_actual = opciones_df[opciones_df["label"] == seleccion].iloc[0]
+            producto_sel = fila_actual["producto"]
+            super_sel = fila_actual["supermercado"]  # valor original (minúscula) para los queries
 
             with st.form("editar_url_form"):
                 nueva_url = st.text_input("Nueva URL", value=fila_actual["url"])
@@ -314,21 +315,58 @@ with tab3:
                     actualizar_url_producto(producto_sel, super_sel, nueva_url)
                     actualizar_estado_activo(producto_sel, super_sel, activo_check)
                     refrescar_canasta_config()
-                    st.success(f"Actualizado: {producto_sel} — {super_sel}")
+                    st.success(f"Actualizado: {producto_sel} — {super_sel.capitalize()}")
                     st.rerun()
+
+    st.divider()
+
+    # --- Agregar una categoría nueva ---
+    st.subheader("🗂️ Agregar categoría")
+    categorias_existentes = sorted(df_config["categoria"].dropna().unique().tolist()) if not df_config.empty else []
+
+    st.caption("Categorías existentes (evitá crear una duplicada con otro nombre):")
+    if categorias_existentes:
+        st.write(", ".join(categorias_existentes))
+    else:
+        st.write("Todavía no hay categorías cargadas.")
+
+    with st.form("agregar_categoria_form"):
+        categoria_nueva_standalone = st.text_input("Nombre de la nueva categoría")
+        agregar_cat_submitted = st.form_submit_button("Agregar categoría")
+
+        if agregar_cat_submitted:
+            if not categoria_nueva_standalone:
+                st.error("Ingresá un nombre de categoría.")
+            elif categoria_nueva_standalone in categorias_existentes:
+                st.warning(f"La categoría '{categoria_nueva_standalone}' ya existe.")
+            else:
+                st.session_state["categorias_extra"] = st.session_state.get("categorias_extra", []) + [categoria_nueva_standalone]
+                st.success(
+                    f"Categoría '{categoria_nueva_standalone}' lista para usar. "
+                    f"Ahora podés asignarla a un producto nuevo más abajo."
+                )
+                st.rerun()
 
     st.divider()
 
     # --- Agregar un producto nuevo ---
     st.subheader("➕ Agregar producto nuevo")
+
+    categorias_disponibles = sorted(
+        set(categorias_existentes) | set(st.session_state.get("categorias_extra", []))
+    )
+
     with st.form("agregar_producto_form"):
         col1, col2 = st.columns(2)
         with col1:
-            categoria_nueva = st.text_input("Categoría")
+            if categorias_disponibles:
+                categoria_nueva = st.selectbox("Categoría", categorias_disponibles)
+            else:
+                categoria_nueva = st.text_input("Categoría (todavía no hay ninguna cargada)")
             producto_nuevo = st.text_input("Producto")
         with col2:
             supermercado_nuevo = st.selectbox(
-                "Supermercado", ["carrefour", "jumbo", "disco", "vea", "dia"]
+                "Supermercado", ["Carrefour", "Jumbo", "Disco", "Vea", "Dia"]
             )
             url_nueva = st.text_input("URL del producto")
 
@@ -336,7 +374,8 @@ with tab3:
 
         if agregar_submitted:
             if categoria_nueva and producto_nuevo and url_nueva:
-                agregar_producto(categoria_nueva, producto_nuevo, supermercado_nuevo, url_nueva)
+                # Se guarda en minúscula para mantener consistencia con scraper.py
+                agregar_producto(categoria_nueva, producto_nuevo, supermercado_nuevo.lower(), url_nueva)
                 refrescar_canasta_config()
                 st.success(f"Agregado: {producto_nuevo} — {supermercado_nuevo}")
                 st.rerun()
