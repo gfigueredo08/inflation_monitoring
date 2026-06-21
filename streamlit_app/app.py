@@ -3,6 +3,13 @@ app.py
 Monitor de Inflación en Tiempo Real - Punto de entrada de la app.
 """
 
+import sys
+import os
+
+# Aseguramos que Python encuentre los módulos locales (data.py, etc.)
+# sin importar desde qué directorio Streamlit Cloud ejecute la app.
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 import streamlit as st
 from data import cargar_precios, cargar_canasta_config
 
