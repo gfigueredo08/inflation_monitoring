@@ -28,6 +28,10 @@ from pipeline import (
     comparar_con_indec,
     entrenar_prophet,
     predecir,
+    precios_actuales_por_supermercado,
+    calcular_brecha,
+    perfil_supermercados,
+    clustering_supermercados,
 )
 
 st.set_page_config(
@@ -178,7 +182,79 @@ with tab1:
         )
 
 with tab2:
-    st.info("Próximo paso: comparación de precios entre cadenas + clustering")
+    st.subheader("Precios actuales por supermercado")
+
+    with st.spinner("Calculando comparación entre supermercados..."):
+        df_limpio_tab2 = limpiar_outliers(df_precios)
+        tabla_precios = precios_actuales_por_supermercado(df_limpio_tab2)
+        tabla_brecha = calcular_brecha(df_limpio_tab2)
+
+    st.dataframe(tabla_precios, hide_index=True, use_container_width=True)
+
+    st.divider()
+    st.subheader("Brecha de precios entre cadenas")
+    st.caption(
+        "Diferencia porcentual entre el supermercado más caro y el más barato "
+        "para cada producto, según el último precio relevado."
+    )
+
+    fig_brecha = go.Figure(go.Bar(
+        x=tabla_brecha["brecha_pct"].head(15),
+        y=tabla_brecha["producto"].head(15),
+        orientation="h",
+        marker_color="#1f77b4",
+    ))
+    fig_brecha.update_layout(
+        title="Top 15 productos con mayor brecha de precios entre supermercados",
+        xaxis_title="Brecha (%)", yaxis_title="",
+        yaxis=dict(autorange="reversed"),
+        height=500,
+    )
+    st.plotly_chart(fig_brecha, use_container_width=True)
+
+    st.divider()
+    st.subheader("Perfil de precios por supermercado (Clustering)")
+    st.caption(
+        "Análisis complementario al objetivo principal del proyecto: agrupa los "
+        "supermercados según su nivel de precios relativo y posición de ranking "
+        "promedio, para identificar perfiles diferenciados de pricing."
+    )
+
+    df_perfil = perfil_supermercados(df_limpio_tab2)
+
+    if len(df_perfil) < 2:
+        st.info("Se necesitan al menos 2 supermercados con datos para el clustering.")
+    else:
+        n_clusters = min(2, len(df_perfil))
+        df_cluster = clustering_supermercados(df_perfil, n_clusters=n_clusters)
+
+        fig_cluster = go.Figure()
+        colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
+        for c in sorted(df_cluster["cluster"].unique()):
+            sub = df_cluster[df_cluster["cluster"] == c]
+            fig_cluster.add_trace(go.Scatter(
+                x=sub["precio_relativo"], y=sub["ranking_precio"],
+                mode="markers+text",
+                text=sub["supermercado"].str.capitalize(),
+                textposition="top center",
+                marker=dict(size=18, color=colors[c % len(colors)]),
+                name=f"Cluster {c}",
+            ))
+        fig_cluster.update_layout(
+            title="Clustering de supermercados según perfil de precios",
+            xaxis_title="Precio relativo (1 = promedio del mercado)",
+            yaxis_title="Ranking de precio promedio (1 = más barato)",
+        )
+        st.plotly_chart(fig_cluster, use_container_width=True)
+
+        tabla_cluster_mostrar = df_cluster.copy()
+        tabla_cluster_mostrar["supermercado"] = tabla_cluster_mostrar["supermercado"].str.capitalize()
+        st.dataframe(tabla_cluster_mostrar, hide_index=True, use_container_width=True)
+
+        st.caption(
+            "⚠️ Con pocos supermercados y meses de datos, este análisis es exploratorio. "
+            "Se consolidará a medida que se acumulen más observaciones reales."
+        )
 
 with tab3:
     st.subheader("Estado de las URLs de la canasta")

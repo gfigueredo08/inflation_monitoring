@@ -179,3 +179,81 @@ def predecir(modelo, df_prophet, periodos=3):
     ) * 100
 
     return forecast, forecast_futuro
+
+
+# ── Comparador de supermercados ─────────────────────────────────────────────
+
+def precios_actuales_por_supermercado(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Tabla pivote: precio más reciente de cada producto en cada supermercado.
+    """
+    df = df.copy()
+    idx_ultimo = df.groupby(["producto", "supermercado"])["fecha_scraping"].idxmax()
+    df_ultimo = df.loc[idx_ultimo]
+
+    pivot = df_ultimo.pivot_table(
+        index=["categoria", "producto"], columns="supermercado", values="precio"
+    ).reset_index()
+    return pivot
+
+
+def calcular_brecha(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Para el precio más reciente de cada producto, calcula la brecha % entre
+    el supermercado más caro y el más barato.
+    """
+    df = df.copy()
+    idx_ultimo = df.groupby(["producto", "supermercado"])["fecha_scraping"].idxmax()
+    df_ultimo = df.loc[idx_ultimo]
+
+    brecha = df_ultimo.groupby(["categoria", "producto"]).agg(
+        precio_min=("precio", "min"),
+        precio_max=("precio", "max"),
+    ).reset_index()
+    brecha["brecha_pct"] = ((brecha["precio_max"] - brecha["precio_min"]) / brecha["precio_min"] * 100).round(1)
+    return brecha.sort_values("brecha_pct", ascending=False)
+
+
+def perfil_supermercados(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calcula, para el precio más reciente de cada producto, el precio relativo
+    (precio / promedio del producto en esa fecha) y el ranking de cada
+    supermercado. Devuelve el promedio de esas métricas por supermercado.
+    """
+    df = df.copy()
+    idx_ultimo = df.groupby(["producto", "supermercado"])["fecha_scraping"].idxmax()
+    df_ultimo = df.loc[idx_ultimo].copy()
+
+    df_ultimo["precio_relativo"] = df_ultimo["precio"] / df_ultimo.groupby("producto")["precio"].transform("mean")
+    df_ultimo["ranking_precio"] = df_ultimo.groupby("producto")["precio"].rank(method="min")
+
+    perfil = df_ultimo.groupby("supermercado").agg(
+        precio_relativo=("precio_relativo", "mean"),
+        ranking_precio=("ranking_precio", "mean"),
+    ).reset_index()
+    perfil["precio_relativo"] = perfil["precio_relativo"].round(3)
+    perfil["ranking_precio"] = perfil["ranking_precio"].round(2)
+    return perfil
+
+
+def clustering_supermercados(df_perfil: pd.DataFrame, n_clusters=2):
+    """
+    Aplica KMeans sobre el perfil de precios de cada supermercado.
+    Requiere al menos n_clusters supermercados con datos.
+    """
+    from sklearn.cluster import KMeans
+    from sklearn.preprocessing import StandardScaler
+
+    if len(df_perfil) < n_clusters:
+        return df_perfil.assign(cluster=0)
+
+    features = ["precio_relativo", "ranking_precio"]
+    X = df_perfil[features].fillna(0)
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    df_perfil = df_perfil.copy()
+    df_perfil["cluster"] = kmeans.fit_predict(X_scaled)
+    return df_perfil
