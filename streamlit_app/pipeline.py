@@ -20,33 +20,30 @@ def limpiar_outliers(df: pd.DataFrame) -> pd.DataFrame:
     2) Desvío > 60% respecto a la mediana por producto + fecha
     Los outliers se reemplazan por NaN y luego se imputan con la mediana
     del producto en esa fecha.
+
+    Implementado con transform() en lugar de groupby().apply() para evitar
+    inconsistencias de comportamiento entre versiones de pandas.
     """
     df = df.copy()
 
-    def _iqr(group):
-        Q1 = group["precio"].quantile(0.25)
-        Q3 = group["precio"].quantile(0.75)
-        IQR = Q3 - Q1
-        lower, upper = Q1 - 1.5 * IQR, Q3 + 1.5 * IQR
-        mask = (group["precio"] < lower) | (group["precio"] > upper)
-        group.loc[mask, "precio"] = np.nan
-        return group
+    # --- Pasada 1: IQR por producto + supermercado ---
+    grp1 = df.groupby(["producto", "supermercado"])["precio"]
+    q1 = grp1.transform(lambda s: s.quantile(0.25))
+    q3 = grp1.transform(lambda s: s.quantile(0.75))
+    iqr = q3 - q1
+    lower, upper = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+    mask_iqr = (df["precio"] < lower) | (df["precio"] > upper)
+    df.loc[mask_iqr, "precio"] = np.nan
 
-    df = df.groupby(["producto", "supermercado"], group_keys=False).apply(_iqr)
+    # --- Pasada 2: desvío > 60% respecto a la mediana por producto + fecha ---
+    grp2 = df.groupby(["producto", "fecha_scraping"])["precio"]
+    mediana = grp2.transform("median")
+    mask_mediana = (mediana.notna()) & (abs(df["precio"] - mediana) / mediana > 0.6)
+    df.loc[mask_mediana, "precio"] = np.nan
 
-    def _mediana(group):
-        mediana = group["precio"].median()
-        if pd.isna(mediana):
-            return group
-        mask = abs(group["precio"] - mediana) / mediana > 0.6
-        group.loc[mask, "precio"] = np.nan
-        return group
-
-    df = df.groupby(["producto", "fecha_scraping"], group_keys=False).apply(_mediana)
-
-    # Imputación con la mediana del producto en esa fecha
+    # --- Imputación con la mediana del producto en esa fecha ---
     df["precio"] = df.groupby(["producto", "fecha_scraping"])["precio"].transform(
-        lambda x: x.fillna(x.median())
+        lambda s: s.fillna(s.median())
     )
     df = df.dropna(subset=["precio"])
     return df
