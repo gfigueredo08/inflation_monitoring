@@ -1,6 +1,6 @@
 """
-data.py
-Conexión a Supabase y funciones de lectura de datos.
+db.py
+Conexión a Supabase y funciones de lectura/escritura de datos.
 """
 
 import streamlit as st
@@ -96,3 +96,11 @@ def agregar_producto(categoria, producto, supermercado, url):
         .execute()
     )
     return response
+
+
+def refrescar_canasta_config():
+    """
+    Invalida el cache de cargar_canasta_config para que el próximo
+    llamado traiga los datos actualizados, en vez de esperar al TTL.
+    """
+    cargar_canasta_config.clear()

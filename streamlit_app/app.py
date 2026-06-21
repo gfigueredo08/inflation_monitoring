@@ -6,13 +6,21 @@ Monitor de Inflación en Tiempo Real - Punto de entrada de la app.
 import sys
 import os
 
-# Aseguramos que Python encuentre los módulos locales (data.py, etc.)
+# Aseguramos que Python encuentre los módulos locales (db.py, pipeline.py)
 # sin importar desde qué directorio Streamlit Cloud ejecute la app.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import streamlit as st
+import pandas as pd
 import plotly.graph_objects as go
-from db import cargar_precios, cargar_canasta_config
+from db import (
+    cargar_precios,
+    cargar_canasta_config,
+    actualizar_url_producto,
+    actualizar_estado_activo,
+    agregar_producto,
+    refrescar_canasta_config,
+)
 from pipeline import (
     limpiar_outliers,
     construir_indice_mensual,
@@ -173,5 +181,88 @@ with tab2:
     st.info("Próximo paso: comparación de precios entre cadenas + clustering")
 
 with tab3:
-    st.info("Próximo paso: tabla editable con semáforo de URLs activas/caídas")
-    st.dataframe(df_config)
+    st.subheader("Estado de las URLs de la canasta")
+
+    if df_config.empty:
+        st.warning("No se encontraron registros en `canasta_config`.")
+    else:
+        # --- Semáforo de estado ---
+        df_estado = df_config.copy()
+        df_estado["estado"] = df_estado.apply(
+            lambda r: "🔴 Con error" if pd.notna(r.get("ultimo_error")) and r.get("ultimo_error")
+            else ("⚪ Inactivo" if not r["activo"] else "🟢 OK"),
+            axis=1,
+        )
+
+        col_a, col_b, col_c = st.columns(3)
+        col_a.metric("🟢 OK", (df_estado["estado"] == "🟢 OK").sum())
+        col_b.metric("🔴 Con error", (df_estado["estado"] == "🔴 Con error").sum())
+        col_c.metric("⚪ Inactivos", (df_estado["estado"] == "⚪ Inactivo").sum())
+
+        # Filtro rápido
+        filtro = st.radio(
+            "Filtrar por estado:",
+            ["Todos", "🔴 Con error", "🟢 OK", "⚪ Inactivo"],
+            horizontal=True,
+        )
+        df_mostrar = df_estado if filtro == "Todos" else df_estado[df_estado["estado"] == filtro]
+
+        columnas_mostrar = ["estado", "categoria", "producto", "supermercado", "url", "ultimo_error", "fecha_ultimo_error"]
+        columnas_mostrar = [c for c in columnas_mostrar if c in df_mostrar.columns]
+        st.dataframe(
+            df_mostrar[columnas_mostrar].sort_values("estado"),
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    st.divider()
+
+    # --- Editar una URL existente ---
+    st.subheader("✏️ Editar una URL")
+    if not df_config.empty:
+        opciones = (df_config["producto"] + " — " + df_config["supermercado"]).tolist()
+        seleccion = st.selectbox("Producto / Supermercado a editar", opciones)
+
+        if seleccion:
+            producto_sel, super_sel = seleccion.split(" — ")
+            fila_actual = df_config[
+                (df_config["producto"] == producto_sel) & (df_config["supermercado"] == super_sel)
+            ].iloc[0]
+
+            with st.form("editar_url_form"):
+                nueva_url = st.text_input("Nueva URL", value=fila_actual["url"])
+                activo_check = st.checkbox("Activo", value=bool(fila_actual["activo"]))
+                submitted = st.form_submit_button("Guardar cambios")
+
+                if submitted:
+                    actualizar_url_producto(producto_sel, super_sel, nueva_url)
+                    actualizar_estado_activo(producto_sel, super_sel, activo_check)
+                    refrescar_canasta_config()
+                    st.success(f"Actualizado: {producto_sel} — {super_sel}")
+                    st.rerun()
+
+    st.divider()
+
+    # --- Agregar un producto nuevo ---
+    st.subheader("➕ Agregar producto nuevo")
+    with st.form("agregar_producto_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            categoria_nueva = st.text_input("Categoría")
+            producto_nuevo = st.text_input("Producto")
+        with col2:
+            supermercado_nuevo = st.selectbox(
+                "Supermercado", ["carrefour", "jumbo", "disco", "vea", "dia"]
+            )
+            url_nueva = st.text_input("URL del producto")
+
+        agregar_submitted = st.form_submit_button("Agregar a la canasta")
+
+        if agregar_submitted:
+            if categoria_nueva and producto_nuevo and url_nueva:
+                agregar_producto(categoria_nueva, producto_nuevo, supermercado_nuevo, url_nueva)
+                refrescar_canasta_config()
+                st.success(f"Agregado: {producto_nuevo} — {supermercado_nuevo}")
+                st.rerun()
+            else:
+                st.error("Completá categoría, producto y URL antes de agregar.")
